@@ -13,9 +13,18 @@ async function callApi(messages, max_tokens) {
   }
 
   const data = await response.json();
-  const content = data.content[0].text;
+  const content = data.content?.[0]?.text;
+  if (!content) {
+    console.error('Unexpected API response:', JSON.stringify(data));
+    throw new Error('Unexpected response from AI. Please try again.');
+  }
   const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error('Failed to parse JSON. Raw content:', content);
+    throw new Error('Could not parse AI response. Please try again.');
+  }
 }
 
 export async function generateVividExample(originalText) {
