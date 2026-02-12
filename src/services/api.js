@@ -1,29 +1,74 @@
 const API_URL = '/.netlify/functions/chat';
+const TIMEOUT_MS = 30000;
+
+function extractJSON(text) {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]);
+  } catch {
+    return null;
+  }
+}
+
+function validateExampleResponse(data) {
+  if (!data || typeof data.vividText !== 'string' || !Array.isArray(data.highlights)) {
+    return null;
+  }
+  return data;
+}
+
+function validateFeedbackResponse(data) {
+  if (!data || typeof data.overallRating !== 'string') {
+    return null;
+  }
+  const arrayFields = ['sensoryDetails', 'emotionalDetails', 'settingDetails', 'actionDetails'];
+  for (const field of arrayFields) {
+    if (!Array.isArray(data[field])) {
+      data[field] = [];
+    }
+  }
+  return data;
+}
 
 async function callApi(messages, max_tokens) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, max_tokens }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Something went wrong. Please try again.');
-  }
-
-  const data = await response.json();
-  const content = data.content?.[0]?.text;
-  if (!content) {
-    console.error('Unexpected API response:', JSON.stringify(data));
-    throw new Error('Unexpected response from AI. Please try again.');
-  }
-  const cleaned = content.replace(/```json\n?|\n?```/g, '').trim();
   try {
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error('Failed to parse JSON. Raw content:', content);
-    throw new Error('Could not parse AI response. Please try again.');
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, max_tokens }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Something went wrong. Please try again.');
+    }
+
+    const data = await response.json();
+    const content = data.content?.[0]?.text;
+    if (!content) {
+      console.error('Unexpected API response:', JSON.stringify(data));
+      throw new Error('Unexpected response from AI. Please try again.');
+    }
+
+    const parsed = extractJSON(content);
+    if (!parsed) {
+      console.error('Failed to extract JSON. Raw content:', content);
+      throw new Error('Could not parse AI response. Please try again.');
+    }
+
+    return parsed;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('The AI is taking too long. Please try again.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -58,12 +103,13 @@ Keep the tone fun and age-appropriate. Make it exciting! Remember: EXACTLY 3 sen
 
 Return ONLY the JSON, no other text.`;
 
-  try {
-    return await callApi([{ role: 'user', content: prompt }], 2000);
-  } catch (error) {
-    console.error('Error generating example:', error);
-    throw new Error('Oops! Something went wrong. Please try again.');
+  const result = await callApi([{ role: 'user', content: prompt }], 2000);
+  const validated = validateExampleResponse(result);
+  if (!validated) {
+    console.error('Invalid example response shape:', result);
+    throw new Error('The AI returned an unexpected format. Please try again.');
   }
+  return validated;
 }
 
 export async function checkUserRewrite(originalText, aiExampleText, userRewrite) {
@@ -116,10 +162,11 @@ Return JSON:
 Be encouraging! If they rewrote it in their own words (even if the story is the same), that's SUCCESS!
 Return ONLY JSON.`;
 
-  try {
-    return await callApi([{ role: 'user', content: prompt }], 1500);
-  } catch (error) {
-    console.error('Error checking rewrite:', error);
-    throw new Error('Oops! Something went wrong checking your work.');
+  const result = await callApi([{ role: 'user', content: prompt }], 1500);
+  const validated = validateFeedbackResponse(result);
+  if (!validated) {
+    console.error('Invalid feedback response shape:', result);
+    throw new Error('The AI returned an unexpected format. Please try again.');
   }
+  return validated;
 }

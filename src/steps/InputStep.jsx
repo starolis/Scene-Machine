@@ -4,7 +4,19 @@ export default function InputStep({
   onGenerate,
   isLoading,
 }) {
+  const MAX_WORDS = 150;
   const wordCount = originalText.split(/\s+/).filter((w) => w).length;
+  const isOverLimit = wordCount > MAX_WORDS;
+
+  const handleTextChange = (value) => {
+    const words = value.split(/\s+/).filter((w) => w);
+    if (words.length <= MAX_WORDS) {
+      onOriginalTextChange(value);
+    } else {
+      const trimmed = words.slice(0, MAX_WORDS).join(' ');
+      onOriginalTextChange(trimmed);
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -63,13 +75,15 @@ export default function InputStep({
 
         <textarea
           value={originalText}
-          onChange={(e) => onOriginalTextChange(e.target.value)}
+          onChange={(e) => handleTextChange(e.target.value)}
           placeholder="Example: The cat walked into the room and looked around. It was hungry and wanted food."
           className="w-full h-48 bg-slate-800/50 rounded-2xl p-5 text-lg text-slate-200 placeholder-slate-500 resize-none border-2 border-slate-700 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500/30 transition-all"
         />
 
         <div className="flex items-center justify-between mt-4">
-          <span className="text-sm text-slate-500">{wordCount} words</span>
+          <span className={`text-sm ${wordCount >= MAX_WORDS ? 'text-amber-400' : 'text-slate-500'}`}>
+            {wordCount}/{MAX_WORDS} words
+          </span>
 
           <button
             onClick={onGenerate}

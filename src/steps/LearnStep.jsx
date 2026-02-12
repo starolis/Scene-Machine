@@ -7,6 +7,7 @@ export default function LearnStep({
   showLegend,
   onToggleLegend,
   onNext,
+  onBack,
 }) {
   return (
     <div className="max-w-5xl mx-auto">
@@ -60,8 +61,8 @@ export default function LearnStep({
           👀 Did you notice all the details?
         </h3>
         <p className="text-slate-300 mb-4">
-          Hover over the colored words to learn more! When you're ready, try
-          writing YOUR own vivid version.
+          Tap or hover over the colored words to learn more! When you're ready,
+          try writing YOUR own vivid version.
           <br />
           <span className="text-amber-400 font-semibold">
             Remember: You can't just copy — you have to write it in YOUR words!
@@ -75,6 +76,16 @@ export default function LearnStep({
             <span>✍️</span>
             I'm Ready to Write My Own Version!
           </span>
+        </button>
+      </div>
+
+      {/* Back Button */}
+      <div className="mt-6 text-center">
+        <button
+          onClick={onBack}
+          className="text-slate-400 hover:text-white transition-colors"
+        >
+          ← Back to My Draft
         </button>
       </div>
     </div>

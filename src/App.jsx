@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import LandingPage from './LandingPage';
 import InputStep from './steps/InputStep';
 import LearnStep from './steps/LearnStep';
@@ -15,30 +15,30 @@ export default function App() {
   const [feedback, setFeedback] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showLegend, setShowLegend] = useState(true);
+  const [error, setError] = useState(null);
+  const pendingRef = useRef(false);
 
   const handleGenerate = async () => {
-    if (!originalText.trim()) return;
+    if (!originalText.trim() || pendingRef.current) return;
+    pendingRef.current = true;
     setIsLoading(true);
+    setError(null);
     try {
       const result = await generateVividExample(originalText);
       setAiExample(result);
       setCurrentStep('learn');
-    } catch (error) {
-      alert(error.message);
+    } catch (err) {
+      setError(err.message);
     }
     setIsLoading(false);
+    pendingRef.current = false;
   };
 
   const handleCheck = async () => {
-    if (!userRewrite.trim()) {
-      alert('Write your own version first!');
-      return;
-    }
-    if (userRewrite.trim().length < 50) {
-      alert('Your rewrite is too short! Try adding more details.');
-      return;
-    }
+    if (!userRewrite.trim() || userRewrite.trim().length < 50 || pendingRef.current) return;
+    pendingRef.current = true;
     setIsLoading(true);
+    setError(null);
     try {
       const result = await checkUserRewrite(
         originalText,
@@ -47,10 +47,11 @@ export default function App() {
       );
       setFeedback(result);
       setCurrentStep('feedback');
-    } catch (error) {
-      alert(error.message);
+    } catch (err) {
+      setError(err.message);
     }
     setIsLoading(false);
+    pendingRef.current = false;
   };
 
   const startOver = () => {
@@ -59,11 +60,13 @@ export default function App() {
     setAiExample(null);
     setUserRewrite('');
     setFeedback(null);
+    setError(null);
   };
 
   const tryAgain = () => {
     setUserRewrite('');
     setFeedback(null);
+    setError(null);
     setCurrentStep('practice');
   };
 
@@ -73,6 +76,22 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white p-6">
+      {error && (
+        <div className="max-w-3xl mx-auto mb-4">
+          <div className="bg-red-500/20 border border-red-500/40 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">😕</span>
+              <p className="text-red-200">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-300 hover:text-white transition-colors text-xl px-2"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       {currentStep === 'input' && (
         <InputStep
           originalText={originalText}
@@ -88,6 +107,7 @@ export default function App() {
           showLegend={showLegend}
           onToggleLegend={() => setShowLegend(!showLegend)}
           onNext={() => setCurrentStep('practice')}
+          onBack={() => setCurrentStep('input')}
         />
       )}
       {currentStep === 'practice' && (
