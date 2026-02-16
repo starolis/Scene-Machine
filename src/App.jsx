@@ -36,6 +36,10 @@ export default function App() {
 
   const handleCheck = async () => {
     if (!userRewrite.trim() || userRewrite.trim().length < 50 || pendingRef.current) return;
+    if (!aiExample?.vividText) {
+      setError('Something went wrong. Please start over.');
+      return;
+    }
     pendingRef.current = true;
     setIsLoading(true);
     setError(null);
@@ -77,8 +81,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 text-white p-6">
       {error && (
-        <div className="max-w-3xl mx-auto mb-4">
-          <div className="bg-red-500/20 border border-red-500/40 rounded-2xl p-4 flex items-center justify-between">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xl w-full px-4">
+          <div className="bg-red-500/20 backdrop-blur-md border border-red-500/40 rounded-2xl p-4 flex items-center justify-between shadow-xl">
             <div className="flex items-center gap-3">
               <span className="text-xl">😕</span>
               <p className="text-red-200">{error}</p>
@@ -86,6 +90,7 @@ export default function App() {
             <button
               onClick={() => setError(null)}
               className="text-red-300 hover:text-white transition-colors text-xl px-2"
+              aria-label="Dismiss error"
             >
               ×
             </button>

@@ -6,15 +6,11 @@ export default function InputStep({
 }) {
   const MAX_WORDS = 150;
   const wordCount = originalText.split(/\s+/).filter((w) => w).length;
-  const isOverLimit = wordCount > MAX_WORDS;
 
   const handleTextChange = (value) => {
     const words = value.split(/\s+/).filter((w) => w);
     if (words.length <= MAX_WORDS) {
       onOriginalTextChange(value);
-    } else {
-      const trimmed = words.slice(0, MAX_WORDS).join(' ');
-      onOriginalTextChange(trimmed);
     }
   };
 

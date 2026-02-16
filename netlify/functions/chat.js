@@ -28,6 +28,26 @@ export default async (req) => {
   try {
     const { messages, max_tokens } = await req.json();
 
+    // Validate messages
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 5) {
+      return new Response(JSON.stringify({ error: 'Invalid request' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Cap max_tokens to prevent abuse
+    const safeMaxTokens = Math.min(max_tokens || 2000, 2500);
+
+    // Validate total content length
+    const totalLength = messages.reduce((sum, m) => sum + (m.content?.length || 0), 0);
+    if (totalLength > 10000) {
+      return new Response(JSON.stringify({ error: 'Input too long' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -37,7 +57,7 @@ export default async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: max_tokens || 2000,
+        max_tokens: safeMaxTokens,
         messages,
       }),
     });
